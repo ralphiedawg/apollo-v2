@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func main() {
+func CheckHealth() {
 	response, err := http.Get("http://localhost:11434/api/tags")
 
 	if err != nil {
@@ -19,3 +19,4 @@ func main() {
 	}
 	os.Exit(0)
 }
+
