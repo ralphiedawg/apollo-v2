@@ -1,0 +1,8 @@
+#update_self:
+  #description: "Update Apollo to the latest version via git pull"
+  #requires_confirmation: true
+  #confirmation_template: "Are you sure you want me to update myself? This will pull the latest changes from the git repository."
+
+health_check:
+  description: "perform a health check on all systems via executing the apolloctl healthcheck command"
+  requires_confirmation: false
