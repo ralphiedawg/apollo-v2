@@ -4,5 +4,5 @@
   #confirmation_template: "Are you sure you want me to update myself? This will pull the latest changes from the git repository."
 
 health_check:
-  description: "perform a health check on all systems via executing the apolloctl healthcheck command"
+  description: "Perform a status check on all systems, including whether the systems are online and functioning properly"
   requires_confirmation: false
