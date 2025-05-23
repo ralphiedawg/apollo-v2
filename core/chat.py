@@ -16,4 +16,5 @@ def chat_with_apollo(model, prompt, stream):
         returned += f"Failed to parse response: {e}" 
         returned += "Raw response:"
         returned += response.text
+    return returned
 
