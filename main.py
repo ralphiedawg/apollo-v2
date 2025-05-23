@@ -1,4 +1,7 @@
-import tests.ollama
+import subprocess
+
+def run_health_check():
+    subprocess.run(["./go/apolloctl"])
 
 if __name__ == "__main__":
-    print(tests.ollama.get_ollama_status())
+    run_health_check()
