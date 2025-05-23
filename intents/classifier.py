@@ -22,27 +22,34 @@ def get_intents(document_path):
 
 def classify_intent(intents):
     classifier_prompt = """
-    You are an intent classifier for Apollo, a voice assistant. 
-    Analyze the user's message and determine if it contains an actionable intent.
-    
-    Return no explanation of decisions nor markdown.
-    Finally, Return exactly the name of the intent you are given. Do not change it whatsoever.
-    Return nothing but a JSON object with the following structure, no wrapping text or anything:
+    You are a part of an intent classifier system for Apollo, a voice assistant. 
+    Your only purpose to exist is to analyze the user's message and determine if it matches or contains an actionable intent from the list of actionable intents you're provided. 
+        
+    Only choose one of the listed intents. If none of them apply, return:
+
     {
-        "intent": "snake_case_intent_name",
-        "requires_confirmation": true/false
+      "intent": "none",
     }
-    the requires_confirmation should be a boolean based off of the requires_confirmation field inside list of intents you are given.
-    If unsure, set requires_confirmation to be 'false' if it's a non-destructive action.
+
+    Otherwise, return 
+    {
+      "intent": "{selected_intent_in_lower_snake_case_here",
+    }
+
+    Do not invent any new intent names, even if the input appears unrelated.
+
+    If an intent requires confirmation, the confirmation template for you to follow will be supplied, so it's safe to assume it's not needed. 
     
-    If no intent is detected, set "intent" to "none".
+    If no intent matching an item in the given list is detected, set "intent" to "none".
     Always use lowercase snake_case for the intent name.
+    Finally, remember you are always able to answer none if the user's prompt doesn't match any of the listed intents.
     
-    User Input = "Are my systems online?"
-    Available intents:
+    Available intents (Only these are valid):
     """
     classifier_prompt += intents;
-    classifier_response = chat_with_apollo("llama3.2:1b", classifier_prompt, True)
+    classifier_prompt += "The User's prompt is:"
+    classifier_prompt += input("> ")
+    classifier_response = chat_with_apollo("llama3.2", classifier_prompt, True)
     print(classifier_response)
 
 

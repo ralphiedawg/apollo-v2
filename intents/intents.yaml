@@ -1,8 +1,12 @@
-#update_self:
-  #description: "Update Apollo to the latest version via git pull"
-  #requires_confirmation: true
-  #confirmation_template: "Are you sure you want me to update myself? This will pull the latest changes from the git repository."
+update_self:
+  description: "Update Apollo to the latest version via git pull"
+  confirmation_template: "Are you sure you want me to update myself? This will pull the latest changes from the git repository."
 
 health_check:
   description: "Perform a status check on all systems, including whether the systems are online and functioning properly"
-  requires_confirmation: false
+
+
+
+  # Fallback
+none:
+  description: "This message matches none of the above intents. I am going to pick this one if I'm even slightly unsure on what to pick"
