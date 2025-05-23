@@ -7,4 +7,4 @@ def run_health_check():
 
 if __name__ == "__main__":
     run_health_check()
-    chat_with_apollo()
+    chat_with_apollo("llama3.2:1b", "Hello, world!", "false")

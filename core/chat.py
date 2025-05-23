@@ -1,11 +1,11 @@
 import requests
 import json
 
-def chat_with_apollo():
+def chat_with_apollo(model, prompt, stream):
     returned = ""
     response = requests.post(
         "http://localhost:11434/api/generate",
-        json={"model": "llama3.2:1b", "prompt": "Say apple, quick!", "stream": False}
+        json={"model": model, "prompt": prompt, "stream": stream}
     )
     try:
         lines = response.text.strip().splitlines()
