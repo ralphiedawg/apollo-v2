@@ -5,6 +5,8 @@ update_self:
 health_check:
   description: "Perform a status check on all systems, including whether the systems are online and functioning properly"
 
+canvas_sync:
+  description: "sync with canvas to fetch the latest tests, quizzes, homework and other assignments posted within the time frame of 1 week ago to 2 weeks from the current date."
 
 
   # Fallback

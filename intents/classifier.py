@@ -1,8 +1,9 @@
 import yaml
+import json
 from core.chat import chat_with_apollo
 
 def get_intents(document_path):
-    available_intents = []
+    intents = []
 
     with open(document_path, 'r') as file:
         try:
@@ -10,17 +11,14 @@ def get_intents(document_path):
             for intent_name, intent_data in data.items():
                 description = intent_data.get("description", "No description provided")
                 requires_confirmation = intent_data.get("requires_confirmation", False)
-                available_intents.append(f"{intent_name}: {description} \nrequires_confirmation: {requires_confirmation}\n")
+                intents.append(f"{intent_name}: {description}\nrequires_confirmation: {requires_confirmation}\n")
         except yaml.YAMLError as err:
             print(f"YAML error: {err}")
             exit()
 
-    returned = ""
-    for intent in available_intents:
-        returned += intent
-    return returned;
+    return "\n".join(intents)
 
-def classify_intent(intents):
+def classify_intent(intents, prompt):
     classifier_prompt = """
     You are a part of an intent classifier system for Apollo, a voice assistant. 
     Your only purpose to exist is to analyze the user's message and determine if it matches or contains an actionable intent from the list of actionable intents you're provided. 
@@ -46,12 +44,29 @@ def classify_intent(intents):
     
     Available intents (Only these are valid):
     """
-    classifier_prompt += intents;
-    classifier_prompt += "The User's prompt is:"
-    classifier_prompt += input("> ")
-    classifier_response = chat_with_apollo("llama3.2", classifier_prompt, True)
-    print(classifier_response)
 
+    classifier_prompt += intents
+    classifier_prompt += "\n\nThe user's prompt is:\n"
+    classifier_prompt += prompt
+    
+    return chat_with_apollo("llama3.2", classifier_prompt, True)
+
+def parse_llm_response(response):
+    try: 
+        data = json.loads(response)
+        return data.get("intent", "none")
+    except json.JSONDecodeError as err:
+        print(f"Error occurred while decoding JSON: {err}")
+        print("Raw response:", response)
+        return "none"
+
+def get_final_intent(message):
+    intents = get_intents("intents/intents.yaml")
+    response = classify_intent(intents, message)
+    intent = parse_llm_response(response)
+    return {"intent": intent}
 
 if __name__ == "__main__":
-    classify_intent(get_intents("intents/intents.yaml"))
+    proompt = input("> ")
+    result = get_final_intent(proompt)
+    print(f"\nSELECTED INTENT: {result['intent']}")
