@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"apollo-v2/internal/health"
+	"apollo-v2/internal/canvas"
 )
 
 var rootCmd = &cobra.Command{
@@ -30,10 +31,19 @@ var versionCmd = &cobra.Command{
 		fmt.Println("Apollo V2 CLI v0.1.0")
 	},
 }
+var canvasSyncCmd = &cobra.Command{
+	Use: 	"canvas_sync",
+	Short: 	"Sync with canvas for the latest assignments",
+	Run: 	func(cmd *cobra.Command, args []string) {
+		canvas.FetchAssignments()
+	},
+
+}
 
 func main() {
 	rootCmd.AddCommand(healthCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(canvasSyncCmd)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

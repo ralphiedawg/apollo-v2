@@ -6,8 +6,10 @@ check_health:
   description: "Perform a status check on all systems, including whether the systems are online and functioning properly"
 
 canvas_sync:
-  description: "sync with canvas to fetch the latest tests, quizzes, homework and other assignments posted within the time frame of 1 week ago to 2 weeks from the current date."
+  description: "sync with canvas to fetch the latest tests, quizzes, homework and other assignments posted within the time frame of 1 week ago to 2 weeks from the current date. Should only occur if the user asks for an updated version of the stored assignments or a sync"
 
+canvas_lookup:
+  description: "look in the cache of canvas assignments to see what assignment the user is talking about"
 
   # Fallback
 none:
