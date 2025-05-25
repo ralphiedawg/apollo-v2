@@ -32,13 +32,15 @@ var versionCmd = &cobra.Command{
 	},
 }
 var canvasSyncCmd = &cobra.Command{
-	Use: 	"canvas_sync",
-	Short: 	"Sync with canvas for the latest assignments",
-	Run: 	func(cmd *cobra.Command, args []string) {
-		canvas.FetchAssignments()
-	},
-
+    Use:   "canvas_sync",
+    Short: "Sync with canvas for the latest assignments",
+    Run: func(cmd *cobra.Command, args []string) {
+        if err := canvas.FetchAssignments(); err != nil {
+            fmt.Println("Error:", err)
+        }
+    },
 }
+
 
 func main() {
 	rootCmd.AddCommand(healthCmd)
