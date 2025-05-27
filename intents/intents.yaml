@@ -1,15 +1,6 @@
-update_self:
-  description: "Update Apollo to the latest version via git pull"
-  confirmation_template: "Are you sure you want me to update myself? This will pull the latest changes from the git repository."
-
 check_health:
   description: "Perform a status check on all systems, including whether the systems are online and functioning properly"
 
-canvas_sync:
-  description: "sync with canvas to fetch the latest tests, quizzes, homework and other assignments posted within the time frame of 1 week ago to 2 weeks from the current date. Should only occur if the user asks for an updated version of the stored assignments or a sync. Only select this intent if the question is related to the dates of schoolwork"
-
-canvas_lookup:
-  description: "look in the cache of canvas assignments to see what assignment the user is talking about"
 
   # Fallback
 none:
