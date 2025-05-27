@@ -35,7 +35,7 @@ def main():
             )
             print(f"[Apollo executed intent: {intent}]")
             #apollotts.speak(f"Intent {intent} executed.")
-            result = chat_with_apollo(model, f" Summarize the result of the command {intent} and return it to me. The output is: {out.stdout}", False)
+            result = chat_with_apollo(model, f" The user has asked the question {user_input}. Summarize the result of the command {intent} and return it to me. The output is: {out.stdout}", False)
             apollotts.speak(result)
 
 
