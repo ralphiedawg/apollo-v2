@@ -149,6 +149,7 @@ pycparser==2.21
 pydantic==2.11.5
 pydantic_core==2.33.2
 pyelftools==0.30
+pygame==2.6.1
 pygdbmi==0.9.0.2
 Pygments==2.14.0
 pykwalify==1.8.0

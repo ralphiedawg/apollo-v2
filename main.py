@@ -1,10 +1,13 @@
 from core.chat import chat_with_apollo
+from core.tts.apollo_tts import *
 from intents.classifier import get_final_intent
 import subprocess
 
 def main():
     print("Apollo Interactive Chat (type 'exit' to quit)")
     model = "llama3.2"  # or whatever your default is
+    
+    apollotts = ApolloTTS() # Check out core/tts/apollo_tts to modify or see how to change tts behavior 
 
     while True:
         user_input = input("\nYou: ")
@@ -21,10 +24,11 @@ def main():
             # No actionable intent, generate a natural response
             response = chat_with_apollo(model, user_input, False)
             print(f"Apollo: {response}")
+            apollotts.speak(response)
         else:
-            # Intent found: execute intent (stub, implement as needed)
-            print(f"[Apollo executed intent: {intent}]")
             subprocess.run(["./go/apolloctl", intent])
+            print(f"[Apollo executed intent: {intent}]")
+            apollotts.speak(f"Intent {intent} executed.")
 
 
 if __name__ == "__main__":
