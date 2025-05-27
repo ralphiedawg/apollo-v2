@@ -26,9 +26,17 @@ def main():
             print(f"Apollo: {response}")
             apollotts.speak(response)
         else:
-            subprocess.run(["./go/apolloctl", intent])
+            out = subprocess.run(
+                ["./go/apolloctl", intent],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+            )
             print(f"[Apollo executed intent: {intent}]")
-            apollotts.speak(f"Intent {intent} executed.")
+            #apollotts.speak(f"Intent {intent} executed.")
+            result = chat_with_apollo(model, f" Summarize the result of the command {intent} and return it to me. The output is: {out.stdout}", False)
+            apollotts.speak(result)
 
 
 if __name__ == "__main__":
