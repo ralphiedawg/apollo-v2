@@ -108,10 +108,6 @@ markdown-it-py==3.0.0
 MarkupSafe==2.1.2
 matplotlib==3.8.4
 matplotlib-inline==0.1.6
-# Editable install with no version control (matter-idl==1.0.0)
--e /Users/ralph/Desktop/projects/connectedhomeip/scripts/py_matter_idl
-# Editable install with no version control (matter-yamltests==1.0.0)
--e /Users/ralph/Desktop/projects/connectedhomeip/scripts/py_matter_yamltests
 mdurl==0.1.2
 mobly==1.12.1
 more-itertools==10.7.0
