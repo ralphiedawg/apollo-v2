@@ -49,7 +49,7 @@ def classify_intent(intents, prompt):
     classifier_prompt += "\n\nThe user's prompt is:\n"
     classifier_prompt += prompt
     
-    return chat_with_apollo("llama3.2", classifier_prompt, True)
+    return chat_with_apollo("gemma3:4b", classifier_prompt, True)
 
 def parse_llm_response(response):
     try: 
