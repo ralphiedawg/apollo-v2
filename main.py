@@ -2,6 +2,7 @@ from core.chat import chat_with_apollo
 from core.tts.apollo_tts import *
 from intents.classifier import get_final_intent
 from core.memory.ShortTermMemory import ShortTermMemory
+from core.memory.LongTermMemory import LongTermMemory
 
 import subprocess
 
@@ -16,10 +17,11 @@ def format_memory_context(memory_entries):
 
 def main():
     print("Apollo Interactive Chat (type 'exit' to quit)")
-    model = "gemma3:4b"  # or whatever your default is
-    
-    apollotts = ApolloTTS() # Check out core/tts/apollo_tts to modify or see how to change tts behavior 
+    model = "gemma3:4b"
+
+    apollotts = ApolloTTS()
     memory = ShortTermMemory(max_entries=15)
+    long_term_memory = LongTermMemory("cache/long_term_memory.json")
 
     while True:
         user_input = input("\nYou: ")
@@ -40,16 +42,32 @@ def main():
             print(f"Apollo: {response}")
             apollotts.speak(response)
             memory.remember(user_input, response)
+
+        elif intent == "store_info":
+            fact = user_input
+            new_fact = long_term_memory.remember(fact, user_input)
+            response = f"I've stored your information as a fact: \"{new_fact['fact']}\""
+            print(f"Apollo: {response}")
+            apollotts.speak(response)
+
+        elif intent == "retrieve_info":
+            all_facts = long_term_memory.recall_all()
+            prompt = f"{memory_context} This user's prompt seems to be pertaining to stored information. Answer the user's question based off of your stored info: {all_facts}. The user's input is: {user_input}"
+            response = chat_with_apollo(model, prompt, False)
+            print(f"Apollo: {response}")
+            apollotts.speak(response)
+           
+
+
         else:
             out = subprocess.run(
                 ["./go/apolloctl", intent],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=True
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True
             )
             print(f"[Apollo executed intent: {intent}]")
-            # Add context to the summary prompt as well
             prompt = (
                 memory_context +
                 f" The user has asked the question {user_input}. Summarize the result of the command {intent} and return it to me. The output is: {out.stdout}"

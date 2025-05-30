@@ -20,36 +20,31 @@ def get_intents(document_path):
 
 def classify_intent(intents, prompt):
     classifier_prompt = """
-    You are a part of an intent classifier system for Apollo, a voice assistant. 
-    Your only purpose to exist is to analyze the user's message and determine if it matches or contains an actionable intent from the list of actionable intents you're provided. 
-        
-    Only choose one of the listed intents. If none of them apply, return:
+    You are an intent classifier for Apollo, a voice assistant.  
+    Your job is to analyze the user's message and select the single most appropriate intent from the provided list.
 
+    Rules:
+    - Only choose one of the valid intents listed below.
+    - If none apply, return exactly:
     {
-      "intent": "none",
+      "intent": "none"
     }
-
-    Otherwise, return 
+    - Otherwise, return exactly:
     {
-      "intent": "{selected_intent_in_lower_snake_case_here",
+      "intent": "{selected_intent_in_lower_snake_case}"
     }
+    - Do NOT invent new intent names, even if the user's input is unrelated.
+    - Always use lowercase snake_case for intent names.
+    - Never add markdown, extra text, or explanations—just the raw JSON as shown.
 
-    Do not invent any new intent names, even if the input appears unrelated.
-
-    If an intent requires confirmation, the confirmation template for you to follow will be supplied, so it's safe to assume it's not needed. 
-    
-    If no intent matching an item in the given list is detected, set "intent" to "none".
-    Always use lowercase snake_case for the intent name.
-    Finally, remember you are always able to answer none if the user's prompt doesn't match any of the listed intents.
-    
-    Available intents (Only these are valid):
+    Available intents (only these are valid):
     """
 
     classifier_prompt += intents
     classifier_prompt += "\n\nThe user's prompt is:\n"
     classifier_prompt += prompt
     
-    return chat_with_apollo("gemma3:4b", classifier_prompt, True)
+    return chat_with_apollo("llama3.2", classifier_prompt, True)
 
 def parse_llm_response(response):
     try: 

@@ -18,6 +18,9 @@ class LongTermMemory:
                 return fact["fact"]
         return "No fact found with the given UUID."
 
+    def recall_all(self):
+        return [fact["fact"] for fact in self.data["facts"]]
+
     def get_next_id(self):
         if not self.data["facts"]:
             return 1
