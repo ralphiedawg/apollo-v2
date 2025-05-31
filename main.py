@@ -1,8 +1,12 @@
 from core.chat import chat_with_apollo
-from core.tts.apollo_tts import *
 from intents.classifier import get_final_intent
+
 from core.memory.ShortTermMemory import ShortTermMemory
 from core.memory.LongTermMemory import LongTermMemory
+
+from core.tts.apollo_tts import *
+from core.stt.AudioCapture import AudioCapture
+
 
 import subprocess
 
