@@ -5,7 +5,6 @@ from core.memory.ShortTermMemory import ShortTermMemory
 from core.memory.LongTermMemory import LongTermMemory
 
 from core.tts.apollo_tts import *
-from core.stt.AudioCapture import AudioCapture
 
 
 import subprocess
@@ -20,10 +19,13 @@ def format_memory_context(memory_entries):
     return context
 
 def main():
+    enable_speech = input ("Enable speech synthesis? (yes/no): ").strip().lower() == "yes"
     print("Apollo Interactive Chat (type 'exit' to quit)")
     model = "gemma3:4b"
 
-    apollotts = ApolloTTS()
+    if enable_speech:
+        apollotts = ApolloTTS()
+
     memory = ShortTermMemory(max_entries=15)
     long_term_memory = LongTermMemory("cache/long_term_memory.json")
 
@@ -44,7 +46,8 @@ def main():
             prompt = memory_context + "User: " + user_input
             response = chat_with_apollo(model, prompt, False)
             print(f"Apollo: {response}")
-            apollotts.speak(response)
+            if enable_speech:
+                apollotts.speak(response)
             memory.remember(user_input, response)
 
         elif intent == "store_info":
@@ -52,14 +55,16 @@ def main():
             new_fact = long_term_memory.remember(fact, user_input)
             response = f"I've stored your information as a fact: \"{new_fact['fact']}\""
             print(f"Apollo: {response}")
-            apollotts.speak(response)
+            if enable_speech:
+                apollotts.speak(response)
 
         elif intent == "retrieve_info":
             all_facts = long_term_memory.recall_all()
             prompt = f"{memory_context} This user's prompt seems to be pertaining to stored information. Answer the user's question based off of your stored info: {all_facts}. The user's input is: {user_input}"
             response = chat_with_apollo(model, prompt, False)
             print(f"Apollo: {response}")
-            apollotts.speak(response)
+            if enable_speech:
+                apollotts.speak(response)
            
 
 
@@ -77,7 +82,9 @@ def main():
                 f" The user has asked the question {user_input}. Summarize the result of the command {intent} and return it to me. The output is: {out.stdout}"
             )
             result = chat_with_apollo(model, prompt, False)
-            apollotts.speak(result)
+            if enable_speech:
+                print(f"Apollo: {result}")
+                apollotts.speak(result)
             memory.remember(user_input, result)
 
 if __name__ == "__main__":
