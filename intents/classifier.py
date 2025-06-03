@@ -36,6 +36,8 @@ def classify_intent(intents, prompt):
     - Do NOT invent new intent names, even if the user's input is unrelated.
     - Always use lowercase snake_case for intent names.
     - Never add markdown, extra text, or explanations—just the raw JSON as shown.
+    - If the intent requires confirmation, you can return it without confirmation.
+    - Greetings, small talk, and other casual interactions are not intents nor things to remember and should return "none".
 
     Available intents (only these are valid):
     """
