@@ -23,6 +23,13 @@ class ApolloTTS:
         )
         play_audio("cache/output.wav", 1)
 
+    def speak_to_file(self, given_text="This is a demo", output_path="cache/output.wav"):
+        self.tts.tts_to_file(
+            text=given_text,
+            speaker=self.speaker_id,
+            file_path=output_path
+        )
+
 if __name__ == "__main__":
     apollotts = ApolloTTS()
     apollotts.speak(given_text = "Hello, I'm Apollo, your personal home assistant", output_dir = "cache")
