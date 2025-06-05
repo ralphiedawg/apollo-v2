@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Response, BackgroundTasks, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from core.chat import chat_with_apollo
 from intents.classifier import get_final_intent
@@ -10,8 +11,18 @@ import subprocess
 import tempfile
 import os
 from typing import Optional
+from itertools import count
 
 app = FastAPI()
+
+# Enable CORS for all origins (you can restrict this to specific domains)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Replace "*" with specific origins if needed
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class ChatRequest(BaseModel):
     user_input: str
@@ -30,7 +41,7 @@ model = "gemma3:4b"
 
 # Dictionary mapping chat_id -> ShortTermMemory for each session
 chat_memories = {}
-next_chat_id = 1
+chat_id_counter = count(1)
 
 def format_memory_context(memory_entries):
     if not memory_entries:
@@ -43,9 +54,7 @@ def format_memory_context(memory_entries):
 
 @app.post("/create_chat", response_model=CreateChatResponse)
 async def create_chat():
-    global next_chat_id
-    chat_id = next_chat_id
-    next_chat_id += 1
+    chat_id = next(chat_id_counter)
     chat_memories[chat_id] = ShortTermMemory(max_entries=15)
     return {"chat_id": chat_id}
 
@@ -73,18 +82,20 @@ async def chat_endpoint(req: ChatRequest):
         fact = user_input
         new_fact = long_term_memory.remember(fact, user_input)
         response = f"I've stored your information as a fact: \"{new_fact['fact']}\""
-        memory.remember(user_input, response)  # <--- Add this line
+        memory.remember(user_input, response)
         return {"response": response, "intent": intent}
 
     elif intent == "retrieve_info":
         all_facts = long_term_memory.recall_all()
         prompt = f"{memory_context} This user's prompt seems to be pertaining to stored information. Answer the user's question based off of your stored info: {all_facts}. The user's input is: {user_input}"
         response = chat_with_apollo(model, prompt, False)
-        memory.remember(user_input, response)  # <--- Add this line
+        memory.remember(user_input, response)
         return {"response": response, "intent": intent}
 
     else:
         # Go intent execution
+        if not os.path.isfile("./go/apolloctl"):
+            raise HTTPException(status_code=500, detail="apolloctl binary not found.")
         try:
             out = subprocess.run(
                 ["./go/apolloctl", intent],
@@ -118,7 +129,7 @@ async def chat_endpoint(req: ChatRequest):
 async def tts_endpoint(req: TTSRequest, background_tasks: BackgroundTasks):
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
         wav_path = tmpfile.name
-    apollotts.speak_to_file(req.text, wav_path)  # Add volume param here if supported
+    apollotts.speak_to_file(req.text, wav_path)  # Add volume if supported: volume=req.volume
     filename = "output.wav"
     background_tasks.add_task(os.remove, wav_path)
     return FileResponse(
