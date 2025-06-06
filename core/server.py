@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Response, BackgroundTasks, HTTPException
+from fastapi import FastAPI, UploadFile, File, Response, BackgroundTasks, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -15,10 +15,10 @@ from itertools import count
 
 app = FastAPI()
 
-# Enable CORS for all origins (you can restrict this to specific domains)
+# Enable CORS for all origins (for dev)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace "*" with specific origins if needed
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,11 +47,15 @@ class TTSRequest(BaseModel):
     text: str
     volume: float = 1.0
 
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
 apollotts = ApolloTTS()
 long_term_memory = LongTermMemory("cache/long_term_memory.json")
 model = "gemma3:4b"
 
-# Each conversation is a dict: {"memory": ShortTermMemory, "name": str}
+# Each conversation is a dict: {"memory": ShortTermMemory, "name": str, "history": list}
 chat_memories = {}
 chat_id_counter = count(1)
 
@@ -71,7 +75,8 @@ async def create_chat():
     chat_id = next(chat_id_counter)
     chat_memories[chat_id] = {
         "memory": ShortTermMemory(max_entries=15),
-        "name": DEFAULT_CONVO_NAME
+        "name": DEFAULT_CONVO_NAME,
+        "history": []
     }
     return {"chat_id": chat_id, "name": DEFAULT_CONVO_NAME}
 
@@ -91,6 +96,13 @@ async def delete_chat(req: DeleteChatRequest):
     else:
         raise HTTPException(status_code=404, detail="Chat ID not found.")
 
+@app.get("/chat_history")
+async def get_chat_history(chat_id: int = Query(...)):
+    chat = chat_memories.get(chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat ID not found.")
+    return chat["history"]
+
 @app.post("/chat")
 async def chat_endpoint(req: ChatRequest):
     chat_id = req.chat_id
@@ -100,6 +112,10 @@ async def chat_endpoint(req: ChatRequest):
     if chat is None:
         raise HTTPException(status_code=404, detail="Chat ID not found. Create a new chat with /create_chat.")
     memory = chat["memory"]
+    history = chat.setdefault("history", [])
+
+    # Add user message to history
+    history.append({"role": "user", "content": user_input})
 
     intent_result = get_final_intent(user_input)
     intent = intent_result.get("intent", "none")
@@ -114,13 +130,17 @@ async def chat_endpoint(req: ChatRequest):
                     response_text += chunk
                     yield chunk
                 memory.remember(user_input, response_text)
+                # Add assistant message to history
+                history.append({"role": "assistant", "content": response_text})
             except Exception as e:
                 yield f"\n[Error: {str(e)}]\n"
+                history.append({"role": "assistant", "content": f"[Error: {str(e)}]"})
         elif intent == "store_info":
             fact = user_input
             new_fact = long_term_memory.remember(fact, user_input)
             response = f"I've stored your information as a fact: \"{new_fact['fact']}\""
             memory.remember(user_input, response)
+            history.append({"role": "assistant", "content": response})
             yield response
         elif intent == "retrieve_info":
             all_facts = long_term_memory.recall_all()
@@ -131,11 +151,15 @@ async def chat_endpoint(req: ChatRequest):
                     response_text += chunk
                     yield chunk
                 memory.remember(user_input, response_text)
+                history.append({"role": "assistant", "content": response_text})
             except Exception as e:
                 yield f"\n[Error: {str(e)}]\n"
+                history.append({"role": "assistant", "content": f"[Error: {str(e)}]"})
         else:
             if not os.path.isfile("./go/apolloctl"):
-                yield "[Error: apolloctl binary not found.]"
+                error_msg = "[Error: apolloctl binary not found.]"
+                yield error_msg
+                history.append({"role": "assistant", "content": error_msg})
                 return
             try:
                 out = subprocess.run(
@@ -154,8 +178,11 @@ async def chat_endpoint(req: ChatRequest):
                     response_text += chunk
                     yield chunk
                 memory.remember(user_input, response_text)
+                history.append({"role": "assistant", "content": response_text})
             except subprocess.CalledProcessError as e:
-                yield f"[Go command failed: {e.stderr}]"
+                error_msg = f"[Go command failed: {e.stderr}]"
+                yield error_msg
+                history.append({"role": "assistant", "content": error_msg})
 
     return StreamingResponse(stream_response(), media_type="text/plain")
 
@@ -173,7 +200,7 @@ async def list_chats():
 async def tts_endpoint(req: TTSRequest, background_tasks: BackgroundTasks):
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
         wav_path = tmpfile.name
-    apollotts.speak_to_file(req.text, wav_path)  # Add volume if supported: volume=req.volume
+    apollotts.speak_to_file(req.text, wav_path)
     filename = "output.wav"
     background_tasks.add_task(os.remove, wav_path)
     return FileResponse(
