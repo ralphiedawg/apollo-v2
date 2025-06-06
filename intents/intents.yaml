@@ -7,6 +7,8 @@ store_info:
 retrieve_info:
   description: "Retrieve information previously stored by the user, including preferences, settings, favorites, or general trivia. Choose this intent if the user asks you to remember something or requests information you have learned before. This one is almost always used in response to a user question especially when the user is asking about a preference, or favorite, as it is typically not useful to retrieve information that has not been requested. Examples include: 'What is my favorite color?' or 'What is my favorite coffee?'."
 
+general_query:
+  description: "Answer general questions that do not fit into any other specific category. This intent is used for queries that are not about health checks, storing information, or retrieving previously stored information. It can include a wide range of topics such as trivia, facts, or general knowledge inquiries."
 
   # Fallback
 none:
