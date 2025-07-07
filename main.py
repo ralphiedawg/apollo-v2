@@ -7,6 +7,8 @@ from core.memory.LongTermMemory import LongTermMemory
 from core.tts.apollo_tts import ApolloTTS
 from core.stt.WhisperCapture import WhisperCapture
 
+from core.auth.authentication_flow import AuthenticationFlow
+
 import subprocess
 
 def format_memory_context(memory_entries):
@@ -46,6 +48,15 @@ def main():
         # Connect the components for feedback prevention
         if enable_voice_input:
             apollotts.set_whisper_capture(whisper_capture)
+
+    # Initialize authentication system
+    print("Initializing authentication system...")
+    auth_flow = AuthenticationFlow()
+    
+    # Perform authentication
+    if not auth_flow.authenticate_user(enable_voice_input, whisper_capture, apollotts):
+        print("Authentication failed. Exiting Apollo.")
+        return
 
     memory = ShortTermMemory(max_entries=15)
     long_term_memory = LongTermMemory("cache/long_term_memory.json")
