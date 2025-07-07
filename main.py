@@ -4,8 +4,8 @@ from intents.classifier import get_final_intent
 from core.memory.ShortTermMemory import ShortTermMemory
 from core.memory.LongTermMemory import LongTermMemory
 
-from core.tts.apollo_tts import *
-
+from core.tts.apollo_tts import ApolloTTS
+from core.stt.WhisperCapture import WhisperCapture
 
 import subprocess
 
@@ -19,18 +19,52 @@ def format_memory_context(memory_entries):
     return context
 
 def main():
-    enable_speech = input ("Enable speech synthesis? (yes/no): ").strip().lower() == "yes"
-    print("Apollo Interactive Chat (type 'exit' to quit)")
+    enable_speech = input("Enable speech synthesis? (yes/no): ").strip().lower() == "yes"
+    enable_voice_input = input("Enable voice input with Whisper? (yes/no): ").strip().lower() == "yes"
+    
+    print("Apollo Interactive Chat (type 'exit' to quit or press Ctrl+C to exit)")
     model = "gemma3:4b"
 
+    # Initialize components
+    whisper_capture = None
+    apollotts = None
+    
+    if enable_voice_input:
+        print("Initializing speech recognition...")
+        try:
+            pause_time = float(input("Seconds to wait during speech pauses (default 2.0): ") or "2.0")
+        except ValueError:
+            print("Invalid value, using default 2.0 seconds")
+            pause_time = 2.0
+            
+        whisper_capture = WhisperCapture(model_size="base", pause_threshold=pause_time)
+        
     if enable_speech:
+        print("Initializing text-to-speech...")
         apollotts = ApolloTTS()
+        
+        # Connect the components for feedback prevention
+        if enable_voice_input:
+            apollotts.set_whisper_capture(whisper_capture)
 
     memory = ShortTermMemory(max_entries=15)
     long_term_memory = LongTermMemory("cache/long_term_memory.json")
 
     while True:
-        user_input = input("\nYou: ")
+        if enable_voice_input:
+            print("\nSay something (or type 'manual' to switch to keyboard input for this turn):")
+            try:
+                user_input = whisper_capture.listen_and_transcribe()
+                if user_input is None or user_input.strip().lower() == "manual":
+                    user_input = input("\nYou (typing): ")
+                else:
+                    print(f"You (voice): {user_input}")
+            except KeyboardInterrupt:
+                print("\nSwitching to manual input for this turn.")
+                user_input = input("\nYou (typing): ")
+        else:
+            user_input = input("\nYou: ")
+            
         if user_input.strip().lower() in ("exit", "quit"):
             print("Exiting chat.")
             break
@@ -41,7 +75,7 @@ def main():
         # Always get the memory context to include in the prompt
         memory_context = format_memory_context(memory.get_context())
 
-        if intent == "none":
+        if intent == "none" or intent == "general_query":
             # No actionable intent, generate a natural response
             prompt = memory_context + "User: " + user_input
             response = chat_with_apollo(model, prompt, False)
@@ -66,8 +100,6 @@ def main():
             if enable_speech:
                 apollotts.speak(response)
            
-
-
         else:
             out = subprocess.run(
                 ["./go/apolloctl", intent],
