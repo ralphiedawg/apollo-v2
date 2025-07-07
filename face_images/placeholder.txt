@@ -1,0 +1,10 @@
+
+FACE IMAGE PLACEHOLDER
+
+To enable face recognition authentication:
+1. Add your face image(s) to this directory
+2. Supported formats: .jpg, .jpeg, .png, .bmp
+3. Name the file with your name (e.g., "ralph.jpg")
+4. The system will automatically detect and use your face for authentication
+
+Until you add face images, you can use the bypass phrase from the .env file.

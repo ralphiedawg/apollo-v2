@@ -6,6 +6,7 @@ from core.memory.LongTermMemory import LongTermMemory
 
 from core.tts.apollo_tts import ApolloTTS
 from core.stt.WhisperCapture import WhisperCapture
+from core.auth.face_authenticator import FaceAuthenticator
 
 import subprocess
 
@@ -22,12 +23,8 @@ def main():
     enable_speech = input("Enable speech synthesis? (yes/no): ").strip().lower() == "yes"
     enable_voice_input = input("Enable voice input with Whisper? (yes/no): ").strip().lower() == "yes"
     
-    print("Apollo Interactive Chat (type 'exit' to quit or press Ctrl+C to exit)")
-    model = "gemma3:4b"
-
-    # Initialize components
+    # Initialize components needed for authentication
     whisper_capture = None
-    apollotts = None
     
     if enable_voice_input:
         print("Initializing speech recognition...")
@@ -38,7 +35,25 @@ def main():
             pause_time = 2.0
             
         whisper_capture = WhisperCapture(model_size="base", pause_threshold=pause_time)
-        
+    
+    # Face Recognition Authentication
+    print("\n" + "="*50)
+    print("🔐 Apollo Authentication Required")
+    print("="*50)
+    
+    face_auth = FaceAuthenticator()
+    
+    if not face_auth.authenticate(enable_voice_input, whisper_capture):
+        print("Authentication failed. Exiting Apollo.")
+        return
+    
+    print("Authentication successful! Starting Apollo...")
+    print("Apollo Interactive Chat (type 'exit' to quit or press Ctrl+C to exit)")
+    model = "gemma3:4b"
+
+    # Initialize remaining components
+    apollotts = None
+    
     if enable_speech:
         print("Initializing text-to-speech...")
         apollotts = ApolloTTS()
