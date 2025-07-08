@@ -1,0 +1,2 @@
+INFO:faster_whisper:Processing audio with duration 00:02.850
+INFO:faster_whisper:Processing audio with duration 00:03.480

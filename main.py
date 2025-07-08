@@ -1,13 +1,50 @@
+#!/usr/bin/env python3
+"""
+Apollo v2 - Voice Assistant
+Main application file
+"""
+
+import os
+import subprocess
+import time
+import datetime
+
+# Try to load dotenv early to ensure environment variables are available
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("Warning: python-dotenv not installed. Environment variables may not be loaded.")
+
+# Core Apollo imports
 from core.chat import chat_with_apollo
 from intents.classifier import get_final_intent
-
 from core.memory.ShortTermMemory import ShortTermMemory
 from core.memory.LongTermMemory import LongTermMemory
+from core.auth.authentication import Authenticator  # Import the new authentication module
 
-from core.tts.apollo_tts import ApolloTTS
-from core.stt.WhisperCapture import WhisperCapture
+# Optional components with fallback
+try:
+    from core.tts.apollo_tts import ApolloTTS
+except ImportError:
+    print("Warning: TTS module not available. Text-to-speech will be disabled.")
+    ApolloTTS = None
 
-import subprocess
+try:
+    from core.stt.WhisperCapture import WhisperCapture
+except ImportError:
+    print("Warning: Whisper module not available. Speech-to-text will be disabled.")
+    WhisperCapture = None
+
+# Face recognition module check
+face_recognition_available = False
+try:
+    import cv2
+    import face_recognition
+    face_recognition_available = True
+except ImportError:
+    print("Warning: Face recognition modules not available. Authentication will be limited to bypass phrase only.")
+
 
 def format_memory_context(memory_entries):
     if not memory_entries:
@@ -18,17 +55,34 @@ def format_memory_context(memory_entries):
     context += "\n"
     return context
 
+
 def main():
-    enable_speech = input("Enable speech synthesis? (yes/no): ").strip().lower() == "yes"
-    enable_voice_input = input("Enable voice input with Whisper? (yes/no): ").strip().lower() == "yes"
-    
     print("Apollo Interactive Chat (type 'exit' to quit or press Ctrl+C to exit)")
     model = "gemma3:4b"
 
-    # Initialize components
+    # First ask about speech synthesis and speech-to-text
+    # Check if speech modules are available
+    can_use_speech = ApolloTTS is not None
+    can_use_voice_input = WhisperCapture is not None
+    
+    # Initialize speech components first
+    enable_speech = False
+    enable_voice_input = False
     whisper_capture = None
     apollotts = None
     
+    # Ask for user preferences only if features are available
+    if can_use_speech:
+        enable_speech = input("Enable speech synthesis? (yes/no): ").strip().lower() == "yes"
+    else:
+        print("Speech synthesis not available.")
+    
+    if can_use_voice_input:
+        enable_voice_input = input("Enable voice input with Whisper? (yes/no): ").strip().lower() == "yes"
+    else:
+        print("Voice input not available.")
+    
+    # Initialize speech components before authentication
     if enable_voice_input:
         print("Initializing speech recognition...")
         try:
@@ -47,6 +101,35 @@ def main():
         if enable_voice_input:
             apollotts.set_whisper_capture(whisper_capture)
 
+    # Initialize the authenticator with speech components
+    authenticator = Authenticator(
+        whisper_capture=whisper_capture if enable_voice_input else None,
+        tts_engine=apollotts if enable_speech else None
+    )
+    
+    # Begin authentication
+    authenticated = authenticator.authenticate_user()
+    
+    if not authenticated:
+        message = "Authentication failed. Exiting."
+        print(message)
+        if enable_speech and apollotts:
+            apollotts.speak(message)
+        return
+    
+    # Get the authenticated username
+    authenticated_user = authenticator.get_authenticated_user() or "User"
+    
+    message = f"Authentication successful! Welcome {authenticated_user}. Starting Apollo..."
+    print(message)
+    if enable_speech and apollotts:
+        # Pause listening while speaking
+        if enable_voice_input and whisper_capture:
+            whisper_capture.pause_listening()
+        apollotts.speak(message)
+        if enable_voice_input and whisper_capture:
+            whisper_capture.resume_listening()
+
     memory = ShortTermMemory(max_entries=15)
     long_term_memory = LongTermMemory("cache/long_term_memory.json")
 
@@ -54,6 +137,8 @@ def main():
         if enable_voice_input:
             print("\nSay something (or type 'manual' to switch to keyboard input for this turn):")
             try:
+                # Make sure listening is active before we start
+                whisper_capture.resume_listening()
                 user_input = whisper_capture.listen_and_transcribe()
                 if user_input is None or user_input.strip().lower() == "manual":
                     user_input = input("\nYou (typing): ")
@@ -81,7 +166,15 @@ def main():
             response = chat_with_apollo(model, prompt, False)
             print(f"Apollo: {response}")
             if enable_speech:
+                # Pause listening while speaking
+                if enable_voice_input:
+                    whisper_capture.pause_listening()
                 apollotts.speak(response)
+                # Resume listening after speaking
+                if enable_voice_input:
+                    # Small delay to ensure audio output has completely stopped
+                    time.sleep(0.3)
+                    whisper_capture.resume_listening()
             memory.remember(user_input, response)
 
         elif intent == "store_info":
@@ -90,7 +183,14 @@ def main():
             response = f"I've stored your information as a fact: \"{new_fact['fact']}\""
             print(f"Apollo: {response}")
             if enable_speech:
+                # Pause listening while speaking
+                if enable_voice_input:
+                    whisper_capture.pause_listening()
                 apollotts.speak(response)
+                # Resume listening after speaking
+                if enable_voice_input:
+                    time.sleep(0.3)
+                    whisper_capture.resume_listening()
 
         elif intent == "retrieve_info":
             all_facts = long_term_memory.recall_all()
@@ -98,7 +198,14 @@ def main():
             response = chat_with_apollo(model, prompt, False)
             print(f"Apollo: {response}")
             if enable_speech:
+                # Pause listening while speaking
+                if enable_voice_input:
+                    whisper_capture.pause_listening()
                 apollotts.speak(response)
+                # Resume listening after speaking
+                if enable_voice_input:
+                    time.sleep(0.3)
+                    whisper_capture.resume_listening()
            
         else:
             out = subprocess.run(
@@ -116,8 +223,16 @@ def main():
             result = chat_with_apollo(model, prompt, False)
             if enable_speech:
                 print(f"Apollo: {result}")
+                # Pause listening while speaking
+                if enable_voice_input:
+                    whisper_capture.pause_listening()
                 apollotts.speak(result)
+                # Resume listening after speaking
+                if enable_voice_input:
+                    time.sleep(0.3)
+                    whisper_capture.resume_listening()
             memory.remember(user_input, result)
+
 
 if __name__ == "__main__":
     main()
