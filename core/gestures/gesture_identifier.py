@@ -3,15 +3,6 @@ import mediapipe as mp
 import time
 import math
 
-mp_hands = mp.solutions.hands
-drawing = mp.solutions.drawing_utils
-hands = mp_hands.Hands()
-
-cam = cv2.VideoCapture(1)
-wake_mode = False
-wake_timer = 0
-volume = 50  # Simulated volume level
-
 def is_shaka(hand):
     extended = lambda tip: hand.landmark[tip].y < hand.landmark[tip - 2].y
     curled = lambda tip: hand.landmark[tip].y > hand.landmark[tip - 2].y
@@ -53,40 +44,54 @@ def distance_to_volume(distance):
     volume = int(((distance - min_distance) / (max_distance - min_distance)) * 100)
     return max(0, min(100, volume))
 
-while True:
-    success, img = cam.read()
-    if not success:
-        continue
+def main():
+    """Main gesture detection loop"""
+    mp_hands = mp.solutions.hands
+    drawing = mp.solutions.drawing_utils
+    hands = mp_hands.Hands()
 
-    rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    results = hands.process(rgb_img)
-    current_time = time.time()
+    cam = cv2.VideoCapture(1)
+    wake_mode = False
+    wake_timer = 0
+    volume = 50  # Simulated volume level
 
-    if results.multi_hand_landmarks:
-        for hand in results.multi_hand_landmarks:
-            drawing.draw_landmarks(img, hand, mp_hands.HAND_CONNECTIONS)
+    while True:
+        success, img = cam.read()
+        if not success:
+            continue
 
-            if is_shaka(hand):
-                print("🤙 Wake gesture detected!")
-                wake_mode = True
-                wake_timer = current_time + 5
+        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        results = hands.process(rgb_img)
+        current_time = time.time()
 
-            if wake_mode:
-                if is_pinching(hand):
-                    # Use distance-based volume control
-                    pinch_distance = get_pinch_distance(hand)
-                    volume = distance_to_volume(pinch_distance)
-                    print(f"🔊 Volume: {volume} (distance: {pinch_distance:.3f})")
-                else:
-                    # When not pinching, show current volume
-                    pass
+        if results.multi_hand_landmarks:
+            for hand in results.multi_hand_landmarks:
+                drawing.draw_landmarks(img, hand, mp_hands.HAND_CONNECTIONS)
 
-    if wake_mode and current_time > wake_timer:
-        wake_mode = False
+                if is_shaka(hand):
+                    print("🤙 Wake gesture detected!")
+                    wake_mode = True
+                    wake_timer = current_time + 5
 
-    cv2.imshow("Apollo Gesture Mode", img)
-    if cv2.waitKey(5) & 0xFF == ord("q"):
-        break
+                if wake_mode:
+                    if is_pinching(hand):
+                        # Use distance-based volume control
+                        pinch_distance = get_pinch_distance(hand)
+                        volume = distance_to_volume(pinch_distance)
+                        print(f"🔊 Volume: {volume} (distance: {pinch_distance:.3f})")
+                    else:
+                        # When not pinching, show current volume
+                        pass
 
-cam.release()
-cv2.destroyAllWindows()
+        if wake_mode and current_time > wake_timer:
+            wake_mode = False
+
+        cv2.imshow("Apollo Gesture Mode", img)
+        if cv2.waitKey(5) & 0xFF == ord("q"):
+            break
+
+    cam.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()
