@@ -2,13 +2,15 @@ import cv2
 import mediapipe as mp
 import time
 import math
+import subprocess
+import platform
 
 mp_hands = mp.solutions.hands
 drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands()
 
 cam = cv2.VideoCapture(0)
-volume = 50  # Simulated volume level
+volume = 50  # Current volume level (0-100)
 is_playing = True  # Track playback state
 
 # State management
@@ -28,6 +30,51 @@ gesture_cooldown = 0   # Cooldown timer for gesture detection
 
 # Progress tracking
 progress_bar_max = 100  # Max width for progress bar
+
+# Check if running on macOS
+is_mac = platform.system() == "Darwin"
+
+def control_macos_media(action):
+    """
+    Control macOS media playback using AppleScript
+    
+    Actions:
+    - "play": Toggle play/pause
+    - "next": Skip to next track
+    - "prev": Go to previous track
+    - "volume_up": Increase volume
+    - "volume_down": Decrease volume
+    - "volume_set": Set volume to specific level (0-100)
+    """
+    if not is_mac:
+        print(f"[Simulated] Media action: {action}")
+        return
+        
+    if action == "play":
+        # Toggle play/pause using AppleScript
+        cmd = """
+        osascript -e 'tell application "System Events" to keystroke space'
+        """
+    elif action == "next":
+        # Skip to next track using AppleScript
+        cmd = """
+        osascript -e 'tell application "System Events" to key code 124 using {command down}'
+        """
+    elif action == "volume_set":
+        # Set volume to specific level (0-100)
+        # AppleScript expects a value from 0-100
+        cmd = f"""
+        osascript -e 'set volume output volume {volume}'
+        """
+    else:
+        print(f"Unsupported action: {action}")
+        return
+        
+    try:
+        subprocess.run(cmd, shell=True)
+        print(f"Media control executed: {action}")
+    except Exception as e:
+        print(f"Error executing media control: {e}")
 
 def is_shaka(hand):
     extended = lambda tip: hand.landmark[tip].y < hand.landmark[tip - 2].y
@@ -84,6 +131,29 @@ def get_pinch_distance(hand):
     distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
     return distance
 
+def get_current_system_volume():
+    """Get the current system volume level on macOS (0-100)"""
+    if not is_mac:
+        return 50  # Default value for non-macOS systems
+    
+    try:
+        cmd = "osascript -e 'output volume of (get volume settings)'"
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        if result.returncode == 0:
+            # macOS returns volume as 0-100
+            return int(result.stdout.strip())
+        else:
+            print("Failed to get system volume")
+            return 50
+    except Exception as e:
+        print(f"Error getting system volume: {e}")
+        return 50
+
+# Initialize volume with current system volume
+if is_mac:
+    volume = get_current_system_volume()
+    print(f"Current system volume: {volume}")
+
 while True:
     success, img = cam.read()
     if not success:
@@ -132,6 +202,12 @@ while True:
                     active_mode = None  # Clear shaka pending
                     v_sign_timer = current_time + 5.0  # 5 seconds to start volume adjustment
                     print(f"You have 5 seconds to prepare for volume adjustment")
+                    
+                    # Get current system volume when entering volume mode
+                    if is_mac:
+                        volume = get_current_system_volume()
+                        print(f"Current system volume: {volume}")
+                    
                     # Reset gesture timers
                     thumbs_up_start = 0
                 
@@ -140,6 +216,10 @@ while True:
                     is_playing = not is_playing
                     status = "▶️ Playing" if is_playing else "⏸️ Paused"
                     print(f"{status}")
+                    
+                    # Actually control the media playback
+                    control_macos_media("play")
+                    
                     cv2.putText(img, status, (50, 200), 
                                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2)
                     gesture_cooldown = current_time + 1.0  # 1 second cooldown
@@ -157,6 +237,10 @@ while True:
                     if hold_duration >= required_hold_time and current_time > gesture_cooldown:
                         # Skip to next song
                         print("▶️ Next song")
+                        
+                        # Actually control the media playback
+                        control_macos_media("next")
+                        
                         cv2.putText(img, "Next song", (50, 150), 
                                   cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 100, 0), 2)
                         gesture_cooldown = current_time + 1.0  # 1 second cooldown
@@ -202,9 +286,12 @@ while True:
                 new_volume = int(normalized_distance * 100)
                 
                 # Only update if there's a significant change
-                if abs(new_volume - volume) > 1:
+                if abs(new_volume - volume) > 2:
                     volume = new_volume
                     print(f"🔊 Volume adjusted to: {volume} (distance: {distance:.4f})")
+                    
+                    # Actually control the system volume
+                    control_macos_media("volume_set")
                 
                 # Draw a line between thumb and index finger with color based on volume
                 thumb_tip = hand.landmark[4]
